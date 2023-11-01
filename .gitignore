@@ -1,0 +1,9 @@
+# General
+.DS_Store
+.idea/
+*.log
+__pycache__/
+*.pyc
+
+# AWS
+.aws-sam/
