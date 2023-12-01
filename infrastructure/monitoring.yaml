@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DevOps Automation: Security (KMS) and Observability (CloudWatch)'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: 'DevOpsProject'
+    Description: 'Environment Name'
+  NotificationEmail:
+    Type: String
+    Default: 'vijayreddy1630@gmail.com'
+    Description: 'Email to receive alerts'
+
+Resources:
+  # 1. KMS Key (Security)
+  # We create a Customer Managed Key (CMK) to encrypt our data.
+  # This is a "Best Practice" for Platform Engineering.
+  AppEncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: 'Encryption key for DevOps Project artifacts and logs'
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+  AppEncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${EnvironmentName}-key'
+      TargetKeyId: !Ref AppEncryptionKey
+
+  # 2. SNS Topic (Notification Channel)
+  # When an alarm goes off, it sends a message here.
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${EnvironmentName}-Alerts'
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref NotificationEmail
+      Protocol: email
+      TopicArn: !Ref AlertTopic
+
+  # 3. CloudWatch Alarm (Observability)
+  # Example: Alert if we have too many 5xx (Server Errors)
+  # Note: This is a placeholder alarm until we have the App running.
+  HighErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${EnvironmentName}-HighErrorRate'
+      AlarmDescription: 'Triggered when 5xx errors exceed 5% in 5 minutes'
+      Namespace: 'AWS/ApplicationELB'
+      MetricName: 'HTTPCode_Target_5XX_Count'
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub '${EnvironmentName}-LB' # Placeholder
+      Statistic: Sum
+      Period: 300 # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
+
+Outputs:
+  KMSKeyArn:
+    Description: The ARN of the KMS Key
+    Value: !GetAtt AppEncryptionKey.Arn
+  AlertTopicArn:
+    Description: The ARN of the SNS Alert Topic
+    Value: !Ref AlertTopic
