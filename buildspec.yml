@@ -1,0 +1,28 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - echo "Installing dependencies..."
+      # In a real app, we would run: pip install -r requirements.txt
+      
+  pre_build:
+    commands:
+      - echo "Running tests..."
+      # In a real app, we would run: pytest
+      
+  build:
+    commands:
+      - echo "Packaging application..."
+      - cd app && zip -r ../app.zip .
+      
+  post_build:
+    commands:
+      - echo "Build completed on `date`"
+
+artifacts:
+  files:
+    - app.zip
+    - infrastructure/*
